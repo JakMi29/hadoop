@@ -31,7 +31,7 @@ class ACLEDAquisition:
             self.log_event("ERROR_LOGIN", error=str(e))
             return False
 
-    def fetch_and_upload(self, hdfs_path="/user/root/ukraine_data.csv"):
+    def fetch_and_upload(self, hdfs_path="/ukraine_data.csv"):
         params = {"country": "Ukraine", "limit": 500}
 
         try:
@@ -48,8 +48,6 @@ class ACLEDAquisition:
                 f.write(raw_data)
 
             data_size = os.path.getsize(local_file)
-
-            subprocess.run(["hdfs", "dfs", "-mkdir", "-p", "/user/root"], capture_output=True)
 
             put_process = subprocess.run([
                 "hdfs", "dfs",
