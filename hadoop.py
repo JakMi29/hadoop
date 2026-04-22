@@ -2,21 +2,15 @@ import requests
 import os
 import datetime
 import subprocess
-from hdfs import InsecureClient
 
 
 class ACLEDAquisition:
-    def __init__(self, email, password, hdfs_url="http://localhost:9870"):
+    def __init__(self, email, password):
         self.email = email
         self.password = password
         self.session = requests.Session()
         self.login_url = "https://acleddata.com/user/login?_format=json"
         self.read_url = "https://acleddata.com/api/acled/read?_format=csv"
-
-        try:
-            self.hdfs_client = InsecureClient(hdfs_url, user='root')
-        except:
-            self.hdfs_client = None
 
     def log_event(self, status, size=0, error=""):
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -38,10 +32,7 @@ class ACLEDAquisition:
             return False
 
     def fetch_and_upload(self, hdfs_path="/user/root/ukraine_data.csv"):
-        params = {
-            "country": "Ukraine",
-            "limit": 500
-        }
+        params = {"country": "Ukraine", "limit": 500}
 
         try:
             response = self.session.get(self.read_url, params=params, timeout=60)
@@ -51,21 +42,25 @@ class ACLEDAquisition:
 
             response.encoding = 'utf-8-sig'
             raw_data = response.text
-            data_size = len(raw_data.encode('utf-8'))
+            local_file = "/tmp/temp_acled.csv"
 
-            local_file = "temp_acled.csv"
             with open(local_file, "w", encoding="utf-8") as f:
                 f.write(raw_data)
 
-            subprocess.run(["hdfs", "dfs", "-rm", "-f", hdfs_path])
+            data_size = os.path.getsize(local_file)
 
-            put_process = subprocess.run(["hdfs", "dfs", "-put", local_file, hdfs_path], capture_output=True)
+            subprocess.run(["hdfs", "dfs", "-mkdir", "-p", "/user/root"], capture_output=True)
+
+            put_process = subprocess.run([
+                "hdfs", "dfs",
+                "-D", "dfs.replication=3",
+                "-put", "-f", local_file, hdfs_path
+            ], capture_output=True, text=True)
 
             if put_process.returncode == 0:
-                subprocess.run(["hdfs", "dfs", "-setrep", "-w", "3", hdfs_path])
                 self.log_event("SUCCESS", size=data_size)
             else:
-                self.log_event("FAILED_HDFS_UPLOAD", error=put_process.stderr.decode())
+                self.log_event("FAILED_HDFS_UPLOAD", error=put_process.stderr)
 
             if os.path.exists(local_file):
                 os.remove(local_file)
@@ -73,9 +68,7 @@ class ACLEDAquisition:
         except Exception as e:
             self.log_event("CRITICAL_ERROR", error=str(e))
 
-
 if __name__ == "__main__":
     client = ACLEDAquisition("263507@student.pwr.edu.pl", "hadoop123hadoop123")
-
     if client.login():
         client.fetch_and_upload()
