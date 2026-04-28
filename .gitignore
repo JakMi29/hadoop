@@ -13,3 +13,4 @@ unhcr*
 GDELT.*
 *.csv
 *.log
+*.tmp
