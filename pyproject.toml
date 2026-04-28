@@ -1,0 +1,17 @@
+[tool.setuptools]
+py-modules = ["main", "data_explore"]
+[project]
+name = "przetwarzanie-duzych-zbiorow-danych"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.9.21"
+dependencies = [
+    "certifi",
+    "comfy-cli",
+    "openapi-client",
+    "pandas",
+    "python-dateutil",
+    "requests",
+    "urllib3",
+]
