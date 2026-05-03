@@ -31,8 +31,8 @@ class ACLEDAquisition:
             self.log_event("ERROR_LOGIN", error=str(e))
             return False
 
-    def fetch_and_upload(self, hdfs_path="/ukraine_data.csv"):
-        params = {"country": "Ukraine", "limit": 500}
+    def fetch_and_upload(self, hdfs_path="/acled_data.csv"):
+        params = {"limit": 0}
 
         try:
             response = self.session.get(self.read_url, params=params, timeout=60)
