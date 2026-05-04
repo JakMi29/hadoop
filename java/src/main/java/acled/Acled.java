@@ -12,139 +12,160 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class Acled {
 
-    public static class AcledStep1Mapper extends Mapper<LongWritable, Text, Text, LongWritable> {
+    public static class Step1Mapper extends Mapper<LongWritable, Text, Text, LongWritable> {
         private final Text outKey = new Text();
         private final LongWritable outFatalities = new LongWritable();
 
         @Override
         protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             if (key.get() == 0) return;
-
-            String line = value.toString();
-            String[] row = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
-
+            String[] row = value.toString().split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
             try {
                 if (row.length > 28) {
-                    String eventDateStr = row[1].replace("\"", "").trim();
-                    int year = LocalDate.parse(eventDateStr).getYear();
+                    String year = row[1].replace("\"", "").split("-")[0].trim();
                     String iso3 = row[15].replace("\"", "").trim();
                     long fatalities = Long.parseLong(row[28].replace("\"", "").trim());
-
                     outKey.set(iso3 + "," + year);
                     outFatalities.set(fatalities);
                     context.write(outKey, outFatalities);
                 }
-            } catch (Exception e) {
-            }
+            } catch (Exception e) {}
         }
     }
 
-    public static class AcledStep1Reducer extends Reducer<Text, LongWritable, Text, Text> {
+    public static class Step1Reducer extends Reducer<Text, LongWritable, Text, Text> {
         @Override
         protected void reduce(Text key, Iterable<LongWritable> values, Context context) throws IOException, InterruptedException {
-            long sumFatalities = 0;
-            long eventCount = 0;
+            long sum = 0;
+            long count = 0;
             for (LongWritable val : values) {
-                sumFatalities += val.get();
-                eventCount++;
+                sum += val.get();
+                count++;
             }
-            String result = String.format("%d,%d", eventCount, sumFatalities);
-            context.write(key, new Text(result));
+            context.write(key, new Text(count + "," + sum));
         }
     }
 
-    public static class AcledStep2Mapper extends Mapper<LongWritable, Text, Text, Text> {
+    public static class Step2Mapper extends Mapper<LongWritable, Text, Text, Text> {
         @Override
         protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-            String line = value.toString();
-            String[] parts = line.split("\t");
+            String[] parts = value.toString().split("\t");
             if (parts.length == 2) {
                 context.write(new Text(parts[0]), new Text(parts[1]));
             }
         }
     }
 
-    public static class Acled2Reducer extends Reducer<Text, Text, Text, Text> {
+    public static class Step2Reducer extends Reducer<Text, Text, Text, Text> {
         @Override
         protected void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
             for (Text val : values) {
                 String[] stats = val.toString().split(",");
-                if (stats.length == 2) {
-                    long eventCount = Long.parseLong(stats[0]);
-                    long sumFatalities = Long.parseLong(stats[1]);
+                long count = Long.parseLong(stats[0]);
+                long sum = Long.parseLong(stats[1]);
+                double intensity = (count > 0) ? (double) sum / count : 0.0;
+                context.write(key, new Text(sum + "," + intensity));
+            }
+        }
+    }
 
-                    double intensity = (eventCount > 0) ? (double) sumFatalities / eventCount : 0.0;
-                    String result = String.format("%d,%.4f", sumFatalities, intensity);
-                    context.write(key, new Text(result));
-                }
+    public static class Step3Mapper extends Mapper<LongWritable, Text, Text, Text> {
+        private final Text globalKey = new Text("GLOBAL_POOL");
+
+        @Override
+        protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            String line = value.toString();
+            String[] parts = line.split("\t");
+            if (parts.length == 2) {
+                context.write(globalKey, new Text(parts[0] + "|" + parts[1]));
+            }
+        }
+    }
+
+    public static class Step3Reducer extends Reducer<Text, Text, Text, Text> {
+        @Override
+        protected void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+            List<Double> intensityList = new ArrayList<>();
+            List<String> rawRecords = new ArrayList<>();
+
+            for (Text val : values) {
+                String valStr = val.toString();
+                rawRecords.add(valStr);
+
+                try {
+                    String intensityStr = valStr.split("\\|")[1].split(",")[1];
+                    intensityList.add(Double.parseDouble(intensityStr));
+                } catch (Exception e) {}
+            }
+
+            Collections.sort(intensityList);
+            if (intensityList.isEmpty()) return;
+
+            int n = intensityList.size();
+            double q1 = intensityList.get((int) (n * 0.25));
+            double q2 = intensityList.get((int) (n * 0.50));
+            double q3 = intensityList.get((int) (n * 0.75));
+
+            for (String record : rawRecords) {
+                String[] parts = record.split("\\|");
+                String countryYear = parts[0];
+                double currentInt = Double.parseDouble(parts[1].split(",")[1]);
+
+                String group = (currentInt <= q1) ? "LOW" :
+                        (currentInt <= q2) ? "MED_LOW" :
+                                (currentInt <= q3) ? "MED_HIGH" : "HIGH";
+
+                context.write(new Text(countryYear), new Text(String.format("%.4f,%s", currentInt, group)));
             }
         }
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length < 2) {
-            System.err.println("Usage: Acled <input> <output>");
-            System.exit(-1);
-        }
-
         Configuration conf = new Configuration();
-        Path intermediatePath = new Path("temp_intermediate_data");
+        Path p1 = new Path("temp_1_aggr");
+        Path p2 = new Path("temp_2_intens");
 
-        // --- STAGE 1 ---
-        long start1 = System.currentTimeMillis();
-        Job job1 = Job.getInstance(conf, "ACLED STEP 1");
-        job1.setJarByClass(Acled.class);
+        Job j1 = Job.getInstance(conf, "ACLED 1: Aggr");
+        j1.setJarByClass(Acled.class);
+        j1.setMapperClass(Step1Mapper.class);
+        j1.setReducerClass(Step1Reducer.class);
+        j1.setOutputKeyClass(Text.class);
+        j1.setOutputValueClass(Text.class);
+        j1.setMapOutputValueClass(LongWritable.class);
+        FileInputFormat.addInputPath(j1, new Path(args[0]));
+        FileOutputFormat.setOutputPath(j1, p1);
 
-        job1.setMapperClass(AcledStep1Mapper.class);
-        job1.setReducerClass(AcledStep1Reducer.class);
+        if (j1.waitForCompletion(true)) {
+            Job j2 = Job.getInstance(conf, "ACLED 2: Intensity");
+            j2.setJarByClass(Acled.class);
+            j2.setMapperClass(Step2Mapper.class);
+            j2.setReducerClass(Step2Reducer.class);
+            j2.setOutputKeyClass(Text.class);
+            j2.setOutputValueClass(Text.class);
+            FileInputFormat.addInputPath(j2, p1);
+            FileOutputFormat.setOutputPath(j2, p2);
 
-        job1.setMapOutputKeyClass(Text.class);
-        job1.setMapOutputValueClass(LongWritable.class);
+            if (j2.waitForCompletion(true)) {
+                Job j3 = Job.getInstance(conf, "ACLED 3: Quantiles");
+                j3.setJarByClass(Acled.class);
+                j3.setMapperClass(Step3Mapper.class);
+                j3.setReducerClass(Step3Reducer.class);
 
-        job1.setOutputKeyClass(Text.class);
-        job1.setOutputValueClass(Text.class);
+                j3.setNumReduceTasks(1);
 
-        FileInputFormat.addInputPath(job1, new Path(args[0]));
-        FileOutputFormat.setOutputPath(job1, intermediatePath);
+                j3.setOutputKeyClass(Text.class);
+                j3.setOutputValueClass(Text.class);
+                FileInputFormat.addInputPath(j3, p2);
+                FileOutputFormat.setOutputPath(j3, new Path(args[1]));
 
-        boolean success1 = job1.waitForCompletion(true);
-        long end1 = System.currentTimeMillis();
-
-        System.out.println("==== STAGE 1 ====");
-        System.out.println("Status: " + (success1 ? "SUCCESS" : "FAIL"));
-        System.out.println("Czas: " + (end1 - start1) + " ms");
-
-        if (success1) {
-            // --- STAGE 2 ---
-            long start2 = System.currentTimeMillis();
-            Job job2 = Job.getInstance(conf, "ACLED STEP 2");
-            job2.setJarByClass(Acled.class);
-
-            job2.setMapperClass(AcledStep2Mapper.class);
-            job2.setReducerClass(Acled2Reducer.class);
-
-            job2.setMapOutputKeyClass(Text.class);
-            job2.setMapOutputValueClass(Text.class);
-
-            job2.setOutputKeyClass(Text.class);
-            job2.setOutputValueClass(Text.class);
-
-            FileInputFormat.addInputPath(job2, intermediatePath);
-            FileOutputFormat.setOutputPath(job2, new Path(args[1]));
-
-            boolean success2 = job2.waitForCompletion(true);
-            long end2 = System.currentTimeMillis();
-
-            System.out.println("==== STAGE 2 ====");
-            System.out.println("Status: " + (success2 ? "SUCCESS" : "FAIL"));
-            System.out.println("Czas: " + (end2 - start2) + " ms");
-
-            System.exit(success2 ? 0 : 1);
-        } else {
-            System.exit(1);
+                System.exit(j3.waitForCompletion(true) ? 0 : 1);
+            }
         }
     }
 }
