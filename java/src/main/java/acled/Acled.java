@@ -49,6 +49,8 @@ public class Acled {
 
         @Override
         protected void reduce(Text key, Iterable<LongWritable> values, Context context) throws IOException, InterruptedException {
+            System.out.println("Reducer processing key: " + key.toString());
+            System.out.println(values);
             long sumFatalities = 0;
             long eventCount = 0;
 
