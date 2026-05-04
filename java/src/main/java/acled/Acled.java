@@ -33,7 +33,7 @@ public class Acled {
                     String iso3 = row[15];
                     int fatalities = Integer.parseInt(row[30]);
 
-                    outKey.set(iso3 + "|" + eventDate);
+                    outKey.set(iso3 + "," + eventDate);
                     outFatalities.set(fatalities);
 
                     context.write(outKey, outFatalities);
@@ -55,15 +55,9 @@ public class Acled {
                 eventCount++;
             }
 
-            String[] parts = key.toString().split("\\|");
-            String iso3 = parts[0];
-            String date = parts[1];
-            int year = LocalDate.parse(date).getYear();
+            String result = String.format("%d,%d", eventCount, sumFatalities);
 
-            String resultValue = String.format("%d,%.1f,%s,%d",
-                    year, (double) eventCount, iso3, sumFatalities);
-
-            context.write(null, new Text(resultValue));
+            context.write(key, new Text(result));
         }
     }
 
