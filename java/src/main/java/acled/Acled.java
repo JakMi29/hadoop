@@ -76,12 +76,11 @@ public class Acled {
     }
 
     public static class Step3Mapper extends Mapper<LongWritable, Text, Text, Text> {
-        private final Text globalKey = new Text("GLOBAL_POOL");
+        private final Text globalKey = new Text("GLOBAL");
 
         @Override
         protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-            String line = value.toString();
-            String[] parts = line.split("\t");
+            String[] parts = value.toString().split("\t");
             if (parts.length == 2) {
                 context.write(globalKey, new Text(parts[0] + "|" + parts[1]));
             }
@@ -97,16 +96,16 @@ public class Acled {
             for (Text val : values) {
                 String valStr = val.toString();
                 rawRecords.add(valStr);
-
                 try {
-                    String intensityStr = valStr.split("\\|")[1].split(",")[1];
-                    intensityList.add(Double.parseDouble(intensityStr));
+                    double intensity = Double.parseDouble(valStr.split("\\|")[1].split(",")[1]);
+                    intensityList.add(intensity);
                 } catch (Exception e) {}
             }
 
             Collections.sort(intensityList);
             if (intensityList.isEmpty()) return;
 
+            // Progi kwantyli
             int n = intensityList.size();
             double q1 = intensityList.get((int) (n * 0.25));
             double q2 = intensityList.get((int) (n * 0.50));
@@ -115,33 +114,38 @@ public class Acled {
             for (String record : rawRecords) {
                 String[] parts = record.split("\\|");
                 String countryYear = parts[0];
-                double currentInt = Double.parseDouble(parts[1].split(",")[1]);
+                String[] stats = parts[1].split(",");
 
-                String group = (currentInt <= q1) ? "LOW" :
-                        (currentInt <= q2) ? "MED_LOW" :
-                                (currentInt <= q3) ? "MED_HIGH" : "HIGH";
+                long sumFatalities = Long.parseLong(stats[0]);
+                double currentInt = Double.parseDouble(stats[1]);
 
-                context.write(new Text(countryYear), new Text(String.format("%.4f,%s", currentInt, group)));
+                String quantile = (currentInt <= q1) ? "Q1" :
+                        (currentInt <= q2) ? "Q2" :
+                                (currentInt <= q3) ? "Q3" : "Q4";
+
+                context.write(new Text(countryYear), new Text(quantile + "," + sumFatalities));
             }
         }
     }
 
     public static void main(String[] args) throws Exception {
         Configuration conf = new Configuration();
-        Path p1 = new Path("temp_1_aggr");
-        Path p2 = new Path("temp_2_intens");
+        Path p1 = new Path("temp_1");
+        Path p2 = new Path("temp_2");
 
+        // JOB 1
         Job j1 = Job.getInstance(conf, "ACLED 1: Aggr");
         j1.setJarByClass(Acled.class);
         j1.setMapperClass(Step1Mapper.class);
         j1.setReducerClass(Step1Reducer.class);
+        j1.setMapOutputValueClass(LongWritable.class);
         j1.setOutputKeyClass(Text.class);
         j1.setOutputValueClass(Text.class);
-        j1.setMapOutputValueClass(LongWritable.class);
         FileInputFormat.addInputPath(j1, new Path(args[0]));
         FileOutputFormat.setOutputPath(j1, p1);
 
         if (j1.waitForCompletion(true)) {
+            // JOB 2
             Job j2 = Job.getInstance(conf, "ACLED 2: Intensity");
             j2.setJarByClass(Acled.class);
             j2.setMapperClass(Step2Mapper.class);
@@ -152,13 +156,12 @@ public class Acled {
             FileOutputFormat.setOutputPath(j2, p2);
 
             if (j2.waitForCompletion(true)) {
+                // JOB 3
                 Job j3 = Job.getInstance(conf, "ACLED 3: Quantiles");
                 j3.setJarByClass(Acled.class);
                 j3.setMapperClass(Step3Mapper.class);
                 j3.setReducerClass(Step3Reducer.class);
-
                 j3.setNumReduceTasks(1);
-
                 j3.setOutputKeyClass(Text.class);
                 j3.setOutputValueClass(Text.class);
                 FileInputFormat.addInputPath(j3, p2);
