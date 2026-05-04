@@ -119,9 +119,9 @@ public class Acled {
                 long sumFatalities = Long.parseLong(stats[0]);
                 double currentInt = Double.parseDouble(stats[1]);
 
-                String quantile = (currentInt <= q1) ? "Q1" :
-                        (currentInt <= q2) ? "Q2" :
-                                (currentInt <= q3) ? "Q3" : "Q4";
+                String quantile = (currentInt <= q1) ? "LOW" :
+                    (currentInt <= q2) ? "MID_LOW" :
+                        (currentInt <= q3) ? "MID_HIGH" : "HIGH";
 
                 context.write(new Text(countryYear), new Text(quantile + "," + sumFatalities));
             }
