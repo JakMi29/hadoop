@@ -3,7 +3,7 @@
 echo "=== START MAP REDUCE PIPELINE ==="
 
 # instalacja mavena
-sudo yum install -y maven
+yum install -y maven
 
 # kompilacja
 cd java
