@@ -16,7 +16,7 @@ import java.time.LocalDate;
 
 public class Acled {
 
-    public static class AcledStep1Mapper extends Mapper<LongWritable, Text, Text, LongWritable> {
+    public static class AcledStep1Mapper extends Mapper<LongWritable, Text, LongWritable> {
         private final Text outKey = new Text();
         private final LongWritable outFatalities = new LongWritable();
 
@@ -57,7 +57,7 @@ public class Acled {
         }
     }
 
-    public static class AcledStep2Mapper extends Mapper<LongWritable, Text, Text, Text> {
+    public static class AcledStep2Mapper extends Mapper<LongWritable, Text, Text> {
         @Override
         protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             String[] parts = value.toString().split("\t");
@@ -67,7 +67,7 @@ public class Acled {
         }
     }
 
-    public static class Acled2Reducer extends Reducer<Text, Text, Text, Text> {
+    public static class Acled2Reducer extends Reducer<Text, Text, Text> {
         @Override
         protected void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
             for (Text val : values) {
@@ -76,7 +76,6 @@ public class Acled {
                 long sumFatalities = Long.parseLong(stats[1]);
 
                 double intensity = (eventCount > 0) ? (double) sumFatalities / eventCount : 0.0;
-                // Zapisujemy sumę ofiar i intensywnoś jako tekst
                 String result = String.format("%d,%.4f", sumFatalities, intensity);
                 context.write(key, new Text(result));
             }
@@ -119,7 +118,7 @@ public class Acled {
             Job job2 = Job.getInstance(conf, "ACLED STEP 2");
             job2.setJarByClass(Acled.class);
             job2.setMapperClass(AcledStep2Mapper.class);
-            job2.setReducerClass(Acled2Reducer.class)
+            job2.setReducerClass(Acled2Reducer.class);
 
             job2.setMapOutputKeyClass(Text.class);
             job2.setMapOutputValueClass(Text.class);
@@ -142,4 +141,3 @@ public class Acled {
         }
     }
 }
-```</Text,>
