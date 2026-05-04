@@ -33,7 +33,7 @@ public class Acled {
 
                     String iso3 = row[15].replace("\"", "").trim();
 
-                    long fatalities = Long.parseLong(row[30].replace("\"", "").trim());
+                    long fatalities = Long.parseLong(row[28].replace("\"", "").trim());
 
                     outKey.set(iso3 + "," + year);
                     outFatalities.set(fatalities);
@@ -49,8 +49,6 @@ public class Acled {
 
         @Override
         protected void reduce(Text key, Iterable<LongWritable> values, Context context) throws IOException, InterruptedException {
-            System.out.println("Reducer processing key: " + key.toString());
-            System.out.println(values);
             long sumFatalities = 0;
             long eventCount = 0;
 
@@ -65,11 +63,6 @@ public class Acled {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length < 2) {
-            System.err.println("Usage: Acled <input path> <output path>");
-            System.exit(-1);
-        }
-
         Configuration conf = new Configuration();
         Job job = Job.getInstance(conf, "ACLED Yearly Country Summary");
 
