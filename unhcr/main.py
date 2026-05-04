@@ -56,10 +56,10 @@ def download_csv(url, csv_suffix):
         file_size = os.path.getsize(filename)
         log(f"Zapisano {filename} ({file_size} bajtów): {len(df)} rekordów")
         
-        os.system("hdfs dfs -mkdir -p /unhcr/")
-        os.system(f"hdfs dfs -rm -f /unhcr/{filename}")
-        os.system(f"hdfs dfs -put {filename} /unhcr/")
-        os.system(f"hdfs dfs -setrep -w 3 /unhcr/{filename}")
+        os.system("hdfs dfs -mkdir -p /acled/")
+        os.system(f"hdfs dfs -rm -f /acled/{filename}")
+        os.system(f"hdfs dfs -put {filename} /acled/")
+        os.system(f"hdfs dfs -setrep -w 3 /acled/{filename}")
         log(f"Wgrano na HDFS z 3 replikami plik: {filename}")
     except Exception as e:
         log(f"Wystąpił błąd: {e}")
