@@ -2,7 +2,6 @@ package acled;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
@@ -16,9 +15,9 @@ import java.time.LocalDate;
 
 public class Acled {
 
-    public static class AcledMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+    public static class AcledMapper extends Mapper<LongWritable, Text, Text, LongWritable> {
         private final Text outKey = new Text();
-        private final IntWritable outFatalities = new IntWritable();
+        private final LongWritable outFatalities = new LongWritable();
 
         @Override
         protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
@@ -29,11 +28,14 @@ public class Acled {
 
             try {
                 if (row.length > 30) {
-                    String eventDate = row[1];
-                    String iso3 = row[15];
-                    int fatalities = Integer.parseInt(row[30]);
+                    String eventDateStr = row[1].replace("\"", "").trim();
+                    int year = LocalDate.parse(eventDateStr).getYear();
 
-                    outKey.set(iso3 + "," + eventDate);
+                    String iso3 = row[15].replace("\"", "").trim();
+
+                    long fatalities = Long.parseLong(row[30].replace("\"", "").trim());
+
+                    outKey.set(iso3 + "," + year);
                     outFatalities.set(fatalities);
 
                     context.write(outKey, outFatalities);
@@ -43,20 +45,19 @@ public class Acled {
         }
     }
 
-    public static class AcledReducer extends Reducer<Text, IntWritable, Text, Text> {
+    public static class AcledReducer extends Reducer<Text, LongWritable, Text, Text> {
 
         @Override
-        protected void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
-            int sumFatalities = 0;
+        protected void reduce(Text key, Iterable<LongWritable> values, Context context) throws IOException, InterruptedException {
+            long sumFatalities = 0;
             long eventCount = 0;
 
-            for (IntWritable val : values) {
+            for (LongWritable val : values) {
                 sumFatalities += val.get();
                 eventCount++;
             }
 
             String result = String.format("%d,%d", eventCount, sumFatalities);
-
             context.write(key, new Text(result));
         }
     }
@@ -67,17 +68,15 @@ public class Acled {
             System.exit(-1);
         }
 
-        long start = System.currentTimeMillis();
         Configuration conf = new Configuration();
-        Job job = Job.getInstance(conf, "=== ACLED ===");
+        Job job = Job.getInstance(conf, "ACLED Yearly Country Summary");
 
         job.setJarByClass(Acled.class);
-
         job.setMapperClass(AcledMapper.class);
         job.setReducerClass(AcledReducer.class);
 
         job.setMapOutputKeyClass(Text.class);
-        job.setMapOutputValueClass(IntWritable.class);
+        job.setMapOutputValueClass(LongWritable.class);
 
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
@@ -85,13 +84,6 @@ public class Acled {
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
 
-        boolean success = job.waitForCompletion(true);
-        long end = System.currentTimeMillis();
-
-        System.out.println("==== STAGE 1 ====");
-        System.out.println("Status: " + (success ? "SUCCESS" : "FAIL"));
-        System.out.println("Czas: " + (end - start) + " ms");
-
-        System.exit(success ? 0 : 1);
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
 }
