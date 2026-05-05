@@ -1,4 +1,4 @@
-package uncomtrade.mapreduce;
+package uncomtrade;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -9,16 +9,16 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
-import uncomtrade.mapreduce.stage1.Stage1Mapper;
-import uncomtrade.mapreduce.stage1.Stage1Reducer;
-import uncomtrade.mapreduce.stage2.Stage2Mapper;
-import uncomtrade.mapreduce.stage3.Stage3Mapper;
-import uncomtrade.mapreduce.stage3.Stage3Reducer;
+import uncomtrade.Stage1Mapper;
+import uncomtrade.Stage1Reducer;
+import uncomtrade.Stage2Mapper;
+import uncomtrade.Stage3Mapper;
+import uncomtrade.Stage3Reducer;
 
 public class Main {
 
     // Ścieżki HDFS
-    static final String INPUT_DIR  = "/uncomtrade/raw";       // tu leżą 1997.csv ... 2025.csv
+    static final String INPUT_DIR  = "/data/un_comtrade";       // tu leżą 1997.csv ... 2025.csv
     static final String OUT_STAGE1 = "/uncomtrade/output/stage1";  // p3.0
     static final String OUT_STAGE2 = "/uncomtrade/output/stage2";  // p3.1
     static final String OUT_STAGE3 = "/uncomtrade/output/stage3";  // p3.2

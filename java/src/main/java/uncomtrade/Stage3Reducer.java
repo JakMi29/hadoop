@@ -1,4 +1,4 @@
-package uncomtrade.mapreduce.stage3;
+package uncomtrade;
 
 import java.io.IOException;
 import org.apache.hadoop.io.Text;
