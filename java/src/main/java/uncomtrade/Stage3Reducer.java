@@ -4,7 +4,6 @@ import java.io.IOException;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
-// Reducer wypisuje tylko oryginalną linię (klucz był pomocniczy do sortowania)
 public class Stage3Reducer extends Reducer<Text, Text, Text, Text> {
 
     @Override
