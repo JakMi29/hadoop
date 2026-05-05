@@ -17,3 +17,9 @@ GDELT.*
 
 #java
 /java/target/
+*.class
+# Python installation
+Miniconda3-latest-Linux-x86_64.sh
+Python-3.9.18/
+Python-3.9.18.tgz*
+get-pip.py
