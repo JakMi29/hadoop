@@ -13,7 +13,7 @@ mvn clean package
 
 # acled
 hadoop jar target/hadoop-1.0-SNAPSHOT.jar acled.Acled /acled_data.csv /output/acled
-
+#hadoop jar target/hadoop-1.0-SNAPSHOT.jar unhcr.mapreduce.Main
 # final
 
 # todo usunięcie tymczasowych plików z hdfs
