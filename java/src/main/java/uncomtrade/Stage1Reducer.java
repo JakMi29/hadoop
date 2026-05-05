@@ -4,7 +4,7 @@ import java.io.IOException;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
-// Ten sam Reducer służy jako Combiner (SUM jest łączny i przemienny)
+
 public class Stage1Reducer extends Reducer<Text, Text, Text, Text> {
 
     @Override
@@ -27,7 +27,7 @@ public class Stage1Reducer extends Reducer<Text, Text, Text, Text> {
             if (cmdCode.equals("93")) gunValue   += v;
         }
 
-        // format: reporterCode,year,trade_total,fuel_value,grain_value,gun_value
+
         String out = key.toString() + "," + tradeTotal + "," + fuelValue + "," + grainValue + "," + gunValue;
         context.write(null, new Text(out));
     }

@@ -36,7 +36,6 @@ public class Stage1Mapper extends Mapper<LongWritable, Text, Text, Text> {
         double val = 0;
         try { val = Double.parseDouble(primaryValue); } catch (Exception e) { val = 0; }
 
-        // klucz: reporterCode,year | wartość: cmdCode,primaryValue
         context.write(
             new Text(reporterCode + "," + refYear),
             new Text(cmdCode + "," + val)

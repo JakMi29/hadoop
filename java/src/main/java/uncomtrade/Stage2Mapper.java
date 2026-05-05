@@ -5,7 +5,7 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 
-// p3.0 -> p3.1: liczy udziały (shares). Brak Reducera (numReduceTasks=0).
+
 public class Stage2Mapper extends Mapper<LongWritable, Text, Text, Text> {
 
     @Override
@@ -28,8 +28,8 @@ public class Stage2Mapper extends Mapper<LongWritable, Text, Text, Text> {
         double grainShare = tradeTotal > 0 ? grainValue / tradeTotal : 0;
         double gunShare   = tradeTotal > 0 ? gunValue   / tradeTotal : 0;
 
-        // format: reporterCode,year,fuel_share,grain_share,gun_share
+
         String out = reporterCode + "," + year + "," + fuelShare + "," + grainShare + "," + gunShare;
-        context.write(new Text(out), null);  // klucz=dane, wartość=null (brak reducera)
+        context.write(new Text(out), null);
     }
 }
