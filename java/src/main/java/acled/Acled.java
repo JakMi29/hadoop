@@ -128,64 +128,74 @@ public class Acled {
         }
     }
 
-    public static void main(String[] args) throws Exception {
-        Configuration conf = new Configuration();
-        Path p1 = new Path("temp_1");
-        Path p2 = new Path("temp_2");
-
-        // JOB 1
-        long startTimeJ1 = System.currentTimeMillis();
-        Job j1 = Job.getInstance(conf, "ACLED 1: Aggr");
-        j1.setJarByClass(Acled.class);
-        j1.setMapperClass(Step1Mapper.class);
-        j1.setReducerClass(Step1Reducer.class);
-        j1.setMapOutputValueClass(LongWritable.class);
-        j1.setOutputKeyClass(Text.class);
-        j1.setOutputValueClass(Text.class);
-        FileInputFormat.addInputPath(j1, new Path(args[0]));
-        FileOutputFormat.setOutputPath(j1, p1);
-
-        if (j1.waitForCompletion(true)) {
-            long endTimeJ1 = System.currentTimeMillis();
-            System.out.println(">>> JOB 1 zakończony w: " + (endTimeJ1 - startTimeJ1) / 1000.0 + "s");
-
-        // JOB 2
-        long startTimeJ2 = System.currentTimeMillis();
-        Job j2 = Job.getInstance(conf, "ACLED 2: Intensity");
-        j2.setJarByClass(Acled.class);
-        j2.setMapperClass(Step2Mapper.class);
-        j2.setReducerClass(Step2Reducer.class);
-        j2.setOutputKeyClass(Text.class);
-        j2.setOutputValueClass(Text.class);
-        FileInputFormat.addInputPath(j2, p1);
-        FileOutputFormat.setOutputPath(j2, p2);
-
-        if (j2.waitForCompletion(true)) {
-            long endTimeJ2 = System.currentTimeMillis();
-            System.out.println(">>> JOB 2 zakończony w: " + (endTimeJ2 - startTimeJ2) / 1000.0 + "s");
-
-            // JOB 3
-            long startTimeJ3 = System.currentTimeMillis();
-            Job j3 = Job.getInstance(conf, "ACLED 3: Quantiles");
-            j3.setJarByClass(Acled.class);
-            j3.setMapperClass(Step3Mapper.class);
-            j3.setReducerClass(Step3Reducer.class);
-            j3.setNumReduceTasks(1);
-            j3.setOutputKeyClass(Text.class);
-            j3.setOutputValueClass(Text.class);
-            FileInputFormat.addInputPath(j3, p2);
-            FileOutputFormat.setOutputPath(j3, new Path(args[1]));
-
-            boolean success = j3.waitForCompletion(true);
-            long endTimeJ3 = System.currentTimeMillis();
-
-            if (success) {
-                System.out.println(">>> JOB 3 zakończony w: " + (endTimeJ3 - startTimeJ3) / 1000.0 + "s");
-                System.out.println(">>> CAŁKOWITY CZAS: " + (endTimeJ3 - startTimeJ1) / 1000.0 + "s");
-            }
-
-            System.exit(success ? 0 : 1);
-            }
-        }
+ public static void main(String[] args) throws Exception {
+    if (args.length < 2) {
+        System.err.println("Użycie: Acled <input path> <output path>");
+        System.exit(-1);
     }
+
+    Configuration conf = new Configuration();
+    Path p1 = new Path("temp_1");
+    Path p2 = new Path("temp_2");
+
+    // --- JOB 1 ---
+    long startTimeJ1 = System.currentTimeMillis();
+    Job j1 = Job.getInstance(conf, "ACLED 1: Aggr");
+    j1.setJarByClass(Acled.class);
+    j1.setMapperClass(Step1Mapper.class);
+    j1.setReducerClass(Step1Reducer.class);
+    j1.setMapOutputValueClass(LongWritable.class);
+    j1.setOutputKeyClass(Text.class);
+    j1.setOutputValueClass(Text.class);
+    FileInputFormat.addInputPath(j1, new Path(args[0]));
+    FileOutputFormat.setOutputPath(j1, p1);
+
+    if (!j1.waitForCompletion(true)) {
+        System.err.println("Job 1 failed!");
+        System.exit(1);
+    }
+    long endTimeJ1 = System.currentTimeMillis();
+    System.out.println(">>> JOB 1 zakończony w: " + (endTimeJ1 - startTimeJ1) / 1000.0 + "s");
+
+    // --- JOB 2 ---
+    long startTimeJ2 = System.currentTimeMillis();
+    Job j2 = Job.getInstance(conf, "ACLED 2: Intensity");
+    j2.setJarByClass(Acled.class);
+    j2.setMapperClass(Step2Mapper.class);
+    j2.setReducerClass(Step2Reducer.class);
+    j2.setOutputKeyClass(Text.class);
+    j2.setOutputValueClass(Text.class);
+    FileInputFormat.addInputPath(j2, p1);
+    FileOutputFormat.setOutputPath(j2, p2);
+
+    if (!j2.waitForCompletion(true)) {
+        System.err.println("Job 2 failed!");
+        System.exit(1);
+    }
+    long endTimeJ2 = System.currentTimeMillis();
+    System.out.println(">>> JOB 2 zakończony w: " + (endTimeJ2 - startTimeJ2) / 1000.0 + "s");
+
+    // --- JOB 3 ---
+    long startTimeJ3 = System.currentTimeMillis();
+    Job j3 = Job.getInstance(conf, "ACLED 3: Quantiles");
+    j3.setJarByClass(Acled.class);
+    j3.setMapperClass(Step3Mapper.class);
+    j3.setReducerClass(Step3Reducer.class);
+    j3.setNumReduceTasks(1);
+    j3.setOutputKeyClass(Text.class);
+    j3.setOutputValueClass(Text.class);
+    FileInputFormat.addInputPath(j3, p2);
+    FileOutputFormat.setOutputPath(j3, new Path(args[1]));
+
+    if (!j3.waitForCompletion(true)) {
+        System.err.println("Job 3 failed!");
+        System.exit(1);
+    }
+    long endTimeJ3 = System.currentTimeMillis();
+
+    System.out.println(">>> JOB 3 zakończony w: " + (endTimeJ3 - startTimeJ3) / 1000.0 + "s");
+    System.out.println(">>> CAŁKOWITY CZAS: " + (endTimeJ3 - startTimeJ1) / 1000.0 + "s");
+
+    System.exit(0);
+}
 }
