@@ -15,11 +15,11 @@ def run_acled_step1():
 
         processed_df = raw_df.select(
             split(col("event_date"), "-")[0].alias("year"),
-            col("iso3"),
+            col("iso"),
             col("fatalities").cast("long")
         )
 
-        result_df = processed_df.groupBy("iso3", "year").agg(
+        result_df = processed_df.groupBy("iso", "year").agg(
             count("*").alias("event_count"),
             _sum("fatalities").alias("total_fatalities")
         )
