@@ -11,7 +11,7 @@ def run_acled_step1():
     start_time = time.time()
 
     try:
-        raw_df = spark.read.option("header", "true").csv("hdfs:///user/data/acled_data.csv")
+        raw_df = spark.read.option("header", "true").csv("hdfs://master:9000/user/data/acled_data.csv")
 
         processed_df = raw_df.select(
             split(col("event_date"), "-")[0].alias("year"),
@@ -25,7 +25,7 @@ def run_acled_step1():
         )
 
         print(">>> WYNIK PRZETWARZANIA ACLED STEP 1 <<<")
-        result_df.show(50)  # Pokazuje pierwsze 50 wierszy
+        result_df.show(50)
 
 
     except Exception as e:
