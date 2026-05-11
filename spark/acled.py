@@ -11,7 +11,7 @@ def run_acled_step1():
     start_time = time.time()
 
     try:
-        raw_df = spark.read.option("header", "true").csv("hdfs:///acled_data.csv")
+        raw_df = spark.read.option("header", "true").csv("hdfs://master:9000/acled_data.csv")
 
         processed_df = raw_df.select(
             split(col("event_date"), "-")[0].alias("year"),
