@@ -23,8 +23,8 @@ def main():
         .appName("UncomtradeStage1") \
         .getOrCreate()
 
-    input_path = "hdfs:///master:9000/acled/unhcr_population.csv"
-    output_path = "hdfs:///master:9000/pyspark/unhcr/unhcr_population.csv"
+    input_path = "hdfs:///acled/unhcr_population.csv"
+    output_path = "hdfs:///pyspark/unhcr/unhcr_population.csv"
     
     # Read the CSV file
     df = spark.read.csv(input_path, header=True, inferSchema=False)
