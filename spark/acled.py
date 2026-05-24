@@ -11,8 +11,8 @@ def run_acled_jobs():
 
     input_path = sys.argv[1]
     output_path = sys.argv[2]
-    temp1_path = "temp_1"
-    temp2_path = "temp_2"
+    temp1_path = "hdfs://master:9000/temp_1"
+    temp2_path = "hdfs://master:9000/temp_2"
 
     # Inicjalizacja sesji Spark
     spark = SparkSession.builder \
